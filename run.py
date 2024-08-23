@@ -541,7 +541,7 @@ def main() -> None:
     dp.add_error_handler(error)
     
     # listens for incoming updates from Telegram
-    updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN, webhook_url=APP_URL + TOKEN)
+    updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN, webhook_url=APP_URL/ + TOKEN)
     updater.idle()
 
     return
