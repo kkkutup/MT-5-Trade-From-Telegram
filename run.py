@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 CALCULATE, TRADE, DECISION = range(3)
 
 # allowed FX symbols
-SYMBOLS = ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NOW', 'NZDCAD', 'NZDCHF', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'XAGUSD', 'XAUUSD']
+SYMBOLS = ['AUDCADm', 'AUDCHFm', 'AUDJPYm', 'AUDNZDm', 'AUDUSDm', 'CADCHFm', 'CADJPYm', 'CHFJPYm', 'EURAUDm', 'EURCADm', 'EURCHFm', 'EURGBPm', 'EURJPYm', 'EURNZDm', 'EURUSDm', 'GBPAUDm', 'GBPCADm', 'GBPCHFm', 'GBPJPYm', 'GBPNZDm', 'GBPUSDm', 'NOWm', 'NZDCADm', 'NZDCHFm', 'NZDJPYm', 'NZDUSDm', 'USDCADm', 'USDCHFm', 'USDJPYm', 'XAGUSDm', 'XAUUSDm']
 
 # RISK FACTOR
 RISK_FACTOR = float(os.environ.get("RISK_FACTOR"))
@@ -215,14 +215,14 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
     try:
         account = await api.metatrader_account_api.get_account(ACCOUNT_ID)
         initial_state = account.state
-        deployed_states = ['DEPLOYING', 'DEPLOYED']
+        deployed_states = ['Açılıyor', 'Açıldı']
 
         if initial_state not in deployed_states:
             #  wait until account is deployed and connected to broker
-            logger.info('Deploying account')
+            logger.info('Hesap açılıyor.')
             await account.deploy()
 
-        logger.info('Waiting for API server to connect to broker ...')
+        logger.info('Broker API bağlantısı bekleniyor ...')
         await account.wait_connected()
 
         # connect to MetaApi API
@@ -230,17 +230,17 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
         await connection.connect()
 
         # wait until terminal state synchronized to the local state
-        logger.info('Waiting for SDK to synchronize to terminal state ...')
+        logger.info('SDK Terminal senkronizasyonu yapılıyor ...')
         await connection.wait_synchronized()
 
         # obtains account information from MetaTrader server
         account_information = await connection.get_account_information()
 
-        update.effective_message.reply_text("Successfully connected to MetaTrader!\nCalculating trade risk ... 🤔")
+        update.effective_message.reply_text("MetaTrader' a başarıyla bağlanıldı!\nİşlem riski hesaplanıyor ... 🤔")
 
         # checks if the order is a market execution to get the current price of symbol
         if(trade['Entry'] == 'NOW'):
-            price = await connection.get_symbol_price(symbol=trade['Symbol'])
+            price = await connection.get_symbol_price(symbol=trade['Sembol'])
 
             # uses bid price if the order type is a buy
             if(trade['OrderType'] == 'Buy'):
@@ -251,13 +251,13 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                 trade['Entry'] = float(price['ask'])
 
         # produces a table with trade information
-        GetTradeInformation(update, trade, account_information['balance'])
+        GetTradeInformation(update, trade, account_information['bakiye'])
             
         # checks if the user has indicated to enter trade
         if(enterTrade == True):
 
             # enters trade on to MetaTrader account
-            update.effective_message.reply_text("Entering trade on MetaTrader Account ... 👨🏾‍💻")
+            update.effective_message.reply_text("MetaTrader hesabında işlem açılıyor ... 👨🏾‍💻")
 
             try:
                 # executes buy market execution order
@@ -291,7 +291,7 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
                         result = await connection.create_stop_sell_order(trade['Symbol'], trade['PositionSize'] / len(trade['TP']), trade['Entry'], trade['StopLoss'], takeProfit)
                 
                 # sends success message to user
-                update.effective_message.reply_text("Trade entered successfully! 💰")
+                update.effective_message.reply_text("İşlem başarıyla oluşturuldu! 💰")
                 
                 # prints success message to console
                 logger.info('\nTrade entered successfully!')
@@ -303,7 +303,7 @@ async def ConnectMetaTrader(update: Update, trade: dict, enterTrade: bool):
     
     except Exception as error:
         logger.error(f'Error: {error}')
-        update.effective_message.reply_text(f"There was an issue with the connection 😕\n\nError Message:\n{error}")
+        update.effective_message.reply_text(f"Bağlantı problemi! 😕\n\nError Message:\n{error}")
     
     return
 
@@ -326,15 +326,15 @@ def PlaceTrade(update: Update, context: CallbackContext) -> int:
             
             # checks if there was an issue with parsing the trade
             if(not(trade)):
-                raise Exception('Invalid Trade')
+                raise Exception('Geçersiz İşlem')
 
             # sets the user context trade equal to the parsed trade
             context.user_data['trade'] = trade
-            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... \n(May take a while) ⏰")
+            update.effective_message.reply_text("İşlem başarıyla gerçekleştirildi! 🥳\nMetaTrader'a bağlanılıyor ... \n(Bu biraz zaman alabilir) ⏰")
         
         except Exception as error:
             logger.error(f'Error: {error}')
-            errorMessage = f"There was an error parsing this trade 😕\n\nError: {error}\n\nPlease re-enter trade with this format:\n\nBUY/SELL SYMBOL\nEntry \nSL \nTP \n\nOr use the /cancel to command to cancel this action."
+            errorMessage = f"Tüh bi' hata oluştu 😕\n\nError: {error}\n\nLütfen işlemi bu formatta tekrar gir.:\n\nBUY/SELL SYMBOL\nEntry \nSL \nTP \n\nOr use the /cancel to command to cancel this action."
             update.effective_message.reply_text(errorMessage)
 
             # returns to TRADE state to reattempt trade parsing
@@ -365,11 +365,11 @@ def CalculateTrade(update: Update, context: CallbackContext) -> int:
             
             # checks if there was an issue with parsing the trade
             if(not(trade)):
-                raise Exception('Invalid Trade')
+                raise Exception('Geçersiz İşlem')
 
             # sets the user context trade equal to the parsed trade
             context.user_data['trade'] = trade
-            update.effective_message.reply_text("Trade Successfully Parsed! 🥳\nConnecting to MetaTrader ... (May take a while) ⏰")
+            update.effective_message.reply_text("İşlem başarıyla gerçekleştirildi! 🥳\nMetaTrader'a bağlanılıyor ... (Biraz zaman alabilir) ⏰")
         
         except Exception as error:
             logger.error(f'Error: {error}')
@@ -383,7 +383,7 @@ def CalculateTrade(update: Update, context: CallbackContext) -> int:
     asyncio.run(ConnectMetaTrader(update, context.user_data['trade'], False))
 
     # asks if user if they would like to enter or decline trade
-    update.effective_message.reply_text("Would you like to enter this trade?\nTo enter, select: /yes\nTo decline, select: /no")
+    update.effective_message.reply_text("İşlemi gerçekleştirmek istediğine emin misin?\nEğer eminsen, seç: /yes\nDeğilsen, seç: /no")
 
     return DECISION
 
@@ -427,12 +427,12 @@ def help(update: Update, context: CallbackContext) -> None:
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
 
-    help_message = "This bot is used to automatically enter trades onto your MetaTrader account directly from Telegram. To begin, ensure that you are authorized to use this bot by adjusting your Python script or environment variables.\n\nThis bot supports all trade order types (Market Execution, Limit, and Stop)\n\nAfter an extended period away from the bot, please be sure to re-enter the start command to restart the connection to your MetaTrader account."
-    commands = "List of commands:\n/start : displays welcome message\n/help : displays list of commands and example trades\n/trade : takes in user inputted trade for parsing and placement\n/calculate : calculates trade information for a user inputted trade"
+    help_message = "Bu BOT Telegram üzerinden MetaTrader5 üzerinden işlem oluşturmana yarar!"
+    commands = "Komut Listesi:\n/start : Botu Başlatır\n/help : Yardım\n/trade : İşlem açar\n/calculate : Risk hesabı yapar"
     trade_example = "Example Trades 💴:\n\n"
     market_execution_example = "Market Execution:\nBUY GBPUSD\nEntry NOW\nSL 1.14336\nTP 1.28930\nTP 1.29845\n\n"
     limit_example = "Limit Execution:\nBUY LIMIT GBPUSD\nEntry 1.14480\nSL 1.14336\nTP 1.28930\n\n"
-    note = "You are able to enter up to two take profits. If two are entered, both trades will use half of the position size, and one will use TP1 while the other uses TP2.\n\nNote: Use 'NOW' as the entry to enter a market execution trade."
+    note = "not"
 
     # sends messages to user
     update.effective_message.reply_text(help_message)
@@ -476,14 +476,14 @@ def Trade_Command(update: Update, context: CallbackContext) -> int:
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
     if(not(update.effective_message.chat.username == TELEGRAM_USER)):
-        update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+        update.effective_message.reply_text("Botu kullanmaya yetkin yok! 🙅🏽‍♂️")
         return ConversationHandler.END
     
     # initializes the user's trade as empty prior to input and parsing
     context.user_data['trade'] = None
     
     # asks user to enter the trade
-    update.effective_message.reply_text("Please enter the trade that you would like to place.")
+    update.effective_message.reply_text("Lütfen girmek istediğiniz işlemi yazın.")
 
     return TRADE
 
@@ -495,14 +495,14 @@ def Calculation_Command(update: Update, context: CallbackContext) -> int:
         context: CallbackContext object that stores commonly used objects in handler callbacks
     """
     if(not(update.effective_message.chat.username == TELEGRAM_USER)):
-        update.effective_message.reply_text("You are not authorized to use this bot! 🙅🏽‍♂️")
+        update.effective_message.reply_text("Botu kullanmaya yetkin yok! 🙅🏽‍♂️")
         return ConversationHandler.END
 
     # initializes the user's trade as empty prior to input and parsing
     context.user_data['trade'] = None
 
     # asks user to enter the trade
-    update.effective_message.reply_text("Please enter the trade that you would like to calculate.")
+    update.effective_message.reply_text("Lütfen girmek istediğiniz işlemi yazın.")
 
     return CALCULATE
 
